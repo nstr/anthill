@@ -54,12 +54,14 @@ codex plugin add anthill@anthill-local
 ```
 
 **VS Code (beta):** VS Code has no command for plugins. Add this repository
-as a plugin marketplace in your user `settings.json`, then install **anthill**
-from the plugins VS Code offers:
+as a plugin marketplace in your user `settings.json`:
 
 ```json
 "chat.plugins.marketplaces": ["nstr/anthill"]
 ```
+
+Then open **Agent Customizations ▸ Plugins ▸ Browse Marketplace**, choose
+**anthill** and **Install**. VS Code asks you to trust `nstr/anthill` first.
 
 Then start a new session. More in the [Claude Code](plugins/anthill-claude/README.md),
 [Codex](plugins/anthill-codex/README.md) and [VS Code](plugins/anthill-vscode/README.md)

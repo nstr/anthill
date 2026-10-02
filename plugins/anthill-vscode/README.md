@@ -32,19 +32,25 @@ You need [Anthill](https://github.com/nstr/anthill) itself, and Node.js on your
 VS Code has no command line for plugins; both ways in are settings.
 
 **From GitHub.** Add Anthill's repository as a plugin marketplace in your user
-`settings.json`, then install **anthill** from the plugins VS Code offers:
+`settings.json`:
 
 ```json
 "chat.plugins.marketplaces": ["nstr/anthill"]
 ```
+
+Then open **Agent Customizations ▸ Plugins ▸ Browse Marketplace** (in the
+Agents window, **Customizations** in the sidebar), choose **anthill** and
+**Install**. VS Code asks you to trust `nstr/anthill` first.
 
 VS Code reads this repository's `.github/plugin/marketplace.json`, which lists
 this plugin. Claude Code reads `.claude-plugin/marketplace.json` from the same
 repository and never this one, so each tool gets its own plugin named
 `anthill`.
 
-**From a checkout.** Point VS Code at this folder. VS Code runs the plugin from
-a copy it keeps in its own data folder (`Code/agentPlugins/`):
+**From a checkout.** In **Agent Customizations ▸ Plugins**, choose **Install
+from Source** and pick this folder, or point VS Code at it in `settings.json`,
+which is what Install from Source writes. VS Code runs the plugin from a copy
+it keeps in its own data folder (`Code/agentPlugins/`):
 
 ```json
 "chat.pluginLocations": { "/abs/path/to/anthill/plugins/anthill-vscode": true }
