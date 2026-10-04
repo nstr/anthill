@@ -114,14 +114,18 @@ choice, made so the two cannot drift apart by accident.
    merged, named by its full 40-character SHA. Every check is about that commit
    and nothing else; anything run by hand runs on a clean checkout where
    `git rev-parse HEAD` prints that SHA.
-2. **Automated checks** run by themselves on every push to the branch, on that
-   exact commit: `check`, `linux-source`, `windows-source` and
-   `macos-package` (CI). `macos-package` builds and signs the macOS disk image
-   with the same steps the Release workflow publishes with
+2. **Automated checks** run on the release pull request into master (*Moving a
+   release into master*), on GitHub's merge of it, whose tree `release-gate`
+   requires to be exactly the candidate's: `check`, `linux-source`,
+   `windows-source` and `macos-package` (CI). They rerun by themselves when the
+   branch is updated. Checks run only on pull requests: a push to `<V>-next` or
+   master is the merge of something they already passed. `macos-package`
+   builds and signs the macOS disk image with the same steps the Release workflow publishes with
    (`.github/actions/macos-package`), and publishes nothing; its image is the
    run's artefact. These checks are what verifies a candidate.
 3. **A bug the checks find** is fixed by a pull request into the branch. The
-   new tip is a new candidate and the automated checks run again by themselves.
+   new tip is a new candidate, and the release pull request's checks run again
+   by themselves.
    Anything else that was run on the old candidate and touches the changed code
    is run again, and the record says what was rerun.
 4. **Anything that changes the branch after it was verified** — a fix, a hotfix
@@ -165,9 +169,10 @@ as tested end to end.
    and update the line. Never resolve conflicts in GitHub's editor, on master,
    or by editing the squash.
 3. The maintainer squash-merges it. Only the maintainer merges into master.
-4. **The merge publishes it.** The push to master runs the Release workflow:
-   its version has no `vX.Y.Z` tag yet, so it builds the macOS disk image again
-   on that master commit, tags the commit `vX.Y.Z` and attaches the image to a
+4. **The merge publishes it.** The push to master runs the Release workflow,
+   and only it. It checks nothing — the pull request passed every check on this
+   exact tree — and only publishes: the version has no `vX.Y.Z` tag yet, so it
+   builds the macOS disk image again on that master commit, tags the commit `vX.Y.Z` and attaches the image to a
    GitHub release. Nobody pushes a tag by hand, so macOS never ships a release
    master does not have, and master never has a release macOS lacks. A push to
    master whose version is already tagged publishes nothing; one whose version
@@ -268,5 +273,6 @@ For a released version that cannot wait for the next release:
 | `scripts/smoke-cli.mjs` | `linux-source`, `windows-source` | starts the installed CLI and fetches its page, with diagnostics off |
 
 GitHub enforces the rest: master takes pull requests only, squash only, with
-`check`, `macos-package` and `release-gate` passing; `*-next` branches take pull requests only,
+`check`, `linux-source`, `windows-source`, `macos-package` and
+`release-gate` passing; `*-next` branches take pull requests only,
 with `check` passing, and refuse force pushes.

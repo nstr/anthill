@@ -1,22 +1,27 @@
-# Typecheck and test every pull request, before it can be merged.
+# Typecheck and test every pull request, while it is opened and updated.
 #
-# The same checks the release workflow runs before it builds, on the same
-# runner (`macos-14`, Apple Silicon), so a change that would break a release is
-# caught on its pull request instead of on master. `check` builds no app and
-# uses no secrets: `pull_request` from a fork gets none, and none are needed.
+# Pull requests are the only place checks run. Work reaches a next-release
+# branch (`<version>-next`) and master only through pull requests, so a push
+# to either is a merge of something these checks already passed, and running
+# them again on it would only repeat them.
 #
-# A push to master or the next-release branch (`<version>-next`) runs it again
-# on the exact commit, which is the commit a release verifies (RELEASING.md). That run, and a pull request
-# into master, also builds from source on Linux and Windows the way the README
-# tells people to, and packages the macOS app (`macos-package`). A green Linux or Windows job means the tree installs, builds,
+# `check` (typecheck and tests on `macos-14`, Apple Silicon) runs on every pull
+# request. It builds no app and uses no secrets: `pull_request` from a fork
+# gets none, and none are needed.
+#
+# A pull request into master is a release or a hotfix (RELEASING.md), and it
+# gets the rest as well: builds from source on Linux and Windows the way the
+# README tells people to, and the macOS app packaged and signed
+# (`macos-package`). They run on GitHub's merge of the pull request into
+# master, whose tree `release-gate` requires to be exactly the head's — the
+# commit the release verifies. Updating the branch reruns them. A green Linux or
+# Windows job means the tree installs, builds,
 # passes its tests (Linux) and the CLI starts and serves its page there. It is
 # not E2E on that platform, and macOS passing proves nothing about either.
 name: CI
 
 on:
   pull_request:
-  push:
-    branches: [master, "*-next"]
   workflow_dispatch:
 
 permissions:
@@ -89,13 +94,12 @@ jobs:
       - run: node scripts/smoke-cli.mjs
 
   # The macOS disk image, built and signed the way the Release workflow will
-  # publish it, from the same `.github/actions/macos-package`. It runs on the
-  # next-release branch and on pull requests into master, so the commit a
-  # release verifies has been packaged before it merges; the Release workflow
-  # then builds it again on master and publishes it. Nothing is published here.
-  # Not on a push to master, where the Release workflow is the build.
+  # publish it, from the same `.github/actions/macos-package`. It runs on pull
+  # requests into master, so the commit a release verifies has been packaged
+  # before it merges; the Release workflow then builds it again on master and
+  # publishes it. Nothing is published here.
   macos-package:
-    if: github.ref != 'refs/heads/master' && (github.event_name != 'pull_request' || github.base_ref == 'master')
+    if: github.event_name != 'pull_request' || github.base_ref == 'master'
     runs-on: macos-14
     timeout-minutes: 60
     steps:

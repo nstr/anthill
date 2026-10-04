@@ -342,12 +342,12 @@ Developer ID certificate the machine has, and ad-hoc signed when it has none —
 which is the same build, minus Apple having been told who made it.
 
 CI builds the same image on a macOS runner with
-`.github/actions/macos-package`. The `macos-package` job does it on every push
-to the next-release branch and on pull requests into master, and publishes
-nothing. When a verified release reaches master ([RELEASING.md](RELEASING.md)),
-`.github/workflows/release.yml` sees a version with no `v<version>` tag yet,
-typechecks, runs the tests, builds the image again on that commit, tags it and
-attaches the image to the release. Merging the release is the decision to
+`.github/actions/macos-package`. The `macos-package` job does it on pull
+requests into master, and publishes nothing. When a verified release reaches
+master ([RELEASING.md](RELEASING.md)), `.github/workflows/release.yml` sees a
+version with no `v<version>` tag yet, builds the image again on that commit,
+tags it and attaches the image to the release. It runs no checks of its own:
+the pull request passed them on exactly that tree. Merging the release is the decision to
 publish; a push to master whose version is already released publishes nothing.
 `workflow_dispatch` builds the image without publishing.
 

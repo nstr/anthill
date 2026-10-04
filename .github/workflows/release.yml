@@ -9,9 +9,12 @@
 # Any other push to master — one whose version already has its tag — publishes
 # nothing.
 #
-# The same build runs in CI (`macos-package`) on the commit before it merges,
-# from the shared `.github/actions/macos-package`. A run started by hand builds
-# that artefact here too and publishes nothing.
+# Nothing is checked here: the release pull request already passed every
+# check on exactly this tree (`check`, the Linux and Windows source builds,
+# and `macos-package`, which is this same build from the shared
+# `.github/actions/macos-package`), and `release-gate` made sure the squash is
+# that tree. This only builds and publishes. A run started by hand builds the
+# artefact and publishes nothing.
 #
 # The runner is `macos-14`, pinned rather than `macos-latest`, because the
 # runner image decides the architecture of the build and `latest` moves without
@@ -63,12 +66,6 @@ jobs:
           cache: npm
 
       - run: npm ci
-
-      # A broken build is worth catching before it is published, not after
-      # somebody downloads it.
-      - run: node apps/desktop/scripts/fetch-electron-sqlite.mjs
-      - run: npm run typecheck
-      - run: npm test
 
       - uses: ./.github/actions/macos-package
         with:
