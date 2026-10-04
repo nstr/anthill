@@ -33,6 +33,11 @@
  *   a thing nobody dares migrate.
  * - **It does not age out.** That is the whole point. A record goes when its
  *   workflow is taken off the recent list, and otherwise it stays.
+ *
+ * The last word includes the run itself, as it was when it settled (ANT-275).
+ * The editor's Live session tab opens the finished session from it once the
+ * live store has dropped the run, and a row saying "Finished" beside a tab
+ * saying no session ever ran was two answers to one question.
  */
 
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
@@ -83,6 +88,12 @@ export type WorkflowStatus = {
    * failed: shown as that, not as a failed session (ANT-212).
    */
   unclaimed?: boolean;
+  /**
+   * The run as it settled, so its session can still be opened after the live
+   * store has let it go (ANT-275). Absent from records written before this
+   * was kept; `lastRun` rebuilds what it can for those.
+   */
+  run?: PendingRun;
 };
 
 type Stored = { version: number; workflows: Record<string, WorkflowStatus> };
@@ -122,6 +133,7 @@ function parse(text: string): Record<string, WorkflowStatus> {
     if (!isEnding(state)) continue;
     if (Number.isNaN(Date.parse(at))) continue;
     const stepId = str(entry.stepId);
+    const run = storedRun(entry.run, runId, workflowId);
     workflows[workflowId] = {
       state,
       at,
@@ -129,9 +141,26 @@ function parse(text: string): Record<string, WorkflowStatus> {
       ...(stepId ? { stepId } : {}),
       ...(entry.stopped === true ? { stopped: true } : {}),
       ...(entry.unclaimed === true ? { unclaimed: true } : {}),
+      ...(run ? { run } : {}),
     };
   }
   return workflows;
+}
+
+/**
+ * The kept run, when it is one and it is this record's.
+ *
+ * Checked only as far as the page needs to trust it: a run that names another
+ * id, another workflow or a state that is no ending is dropped, and the record
+ * falls back to what `lastRun` can rebuild. The dot never depended on it.
+ */
+function storedRun(value: unknown, runId: string, workflowId: string): PendingRun | undefined {
+  if (!isRecord(value)) return undefined;
+  if (value.anthillRunId !== runId || value.workflowId !== workflowId) return undefined;
+  const state = str(value.state) as LiveSessionState | undefined;
+  if (!state || !isEnding(state)) return undefined;
+  if (!str(value.selectedCli) || !str(value.createdAt)) return undefined;
+  return value as unknown as PendingRun;
 }
 
 export class WorkflowStatusStore {
@@ -145,6 +174,15 @@ export class WorkflowStatusStore {
   /** Every remembered ending, by workflow id. */
   async all(): Promise<Record<string, WorkflowStatus>> {
     return { ...(await this.load()) };
+  }
+
+  /** The record a run left, and the workflow it is filed under. */
+  async find(runId: string): Promise<{ workflowId: string; status: WorkflowStatus } | undefined> {
+    const workflows = await this.load();
+    for (const [workflowId, status] of Object.entries(workflows)) {
+      if (status.runId === runId) return { workflowId, status };
+    }
+    return undefined;
   }
 
   /**
@@ -175,6 +213,9 @@ export class WorkflowStatusStore {
       runId: run.anthillRunId,
       ...(run.observationStoppedAt ? { stopped: true } : {}),
       ...(run.state === "failed" && !run.detectedSessionId ? { unclaimed: true } : {}),
+      // Whether it was put away in the launch window says nothing about the
+      // session, and the tab opens it either way.
+      run: withoutDismissal(run),
     };
     await this.flush();
   }
@@ -228,4 +269,9 @@ export class WorkflowStatusStore {
       // A lost dot is better than taking the app down for it.
     }
   }
+}
+
+function withoutDismissal(run: PendingRun): PendingRun {
+  const { dismissedAt: _dismissed, ...kept } = run;
+  return kept;
 }

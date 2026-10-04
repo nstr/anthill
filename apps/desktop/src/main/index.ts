@@ -17,7 +17,7 @@ import { appendFileSync, existsSync, mkdirSync } from "node:fs";
 import { parseWorkflow } from "@anthill/workflow-schema";
 import { checkWorkflowCompatibility, isCheckedPluginHarness, migrateWorkflow, PLUGIN_HARNESS_INFO } from "@anthill/workflow";
 import { ExchangeStore } from "@anthill/exchange-store";
-import { MARKER_VERSION, workflowSteps } from "@anthill/live";
+import { MARKER_VERSION, workflowSteps, type PendingRun } from "@anthill/live";
 import type { Workflow } from "@anthill/workflow-schema";
 
 import type { GlobalAgentInput } from "../shared/ipc.js";
@@ -96,6 +96,7 @@ import * as Sentry from "@sentry/electron/main";
 import { claimScheme } from "./url-scheme.js";
 import { PendingRunStore } from "./live/store.js";
 import { WorkflowStatusStore } from "./live/workflow-status.js";
+import { lastRun } from "./live/last-run.js";
 import {
   forgetRecent,
   listRecents,
@@ -588,6 +589,27 @@ function liveService(): LiveSessionService {
     (run) => void workflowStatus().remember(run).catch(() => undefined),
   );
   return live;
+}
+
+/**
+ * The run a workflow last had, from the ending it left (ANT-275).
+ *
+ * For the Live session tab once the live store has dropped a settled run. A
+ * run still in that store is the snapshot's to report, and the renderer asks
+ * here only when the snapshot has nothing for the workflow.
+ */
+async function lastRunOf(workflowId: string): Promise<PendingRun | undefined> {
+  const status = (await workflowStatus().all())[workflowId];
+  return lastRun(workflowId, status, {
+    events: (runId) => liveService().events(runId),
+    binding: (id, runId) => exchange().readBinding(id, runId),
+  });
+}
+
+/** The same, found by the run's id. */
+async function keptRun(runId: string): Promise<PendingRun | undefined> {
+  const found = await workflowStatus().find(runId);
+  return found ? lastRunOf(found.workflowId) : undefined;
 }
 
 function liveSetupService(): ObservationSetupService {
@@ -1149,8 +1171,13 @@ function registerIpcHandlers(): void {
     readExchangeView(exchange(), await workflowSaver.linkedExchangePath(path, id) ?? path, id));
   handle(IpcChannel.liveWorkflow, async (_event, runId: string) => {
     await liveService().start();
-    return boundWorkflow(exchange(), liveService().registered(runId));
+    // A finished run the live store has dropped still names its revision
+    // through the record it left (ANT-275).
+    const run = liveService().registered(runId) ?? (await keptRun(runId));
+    return boundWorkflow(exchange(), run);
   });
+  handle(IpcChannel.liveLastRun, async (_event, workflowId: string) =>
+    typeof workflowId === "string" ? lastRunOf(workflowId) : undefined);
 
   handle(
     IpcChannel.workflowSave,

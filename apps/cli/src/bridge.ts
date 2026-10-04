@@ -773,6 +773,10 @@ export async function createBridge(options: BridgeOptions): Promise<Bridge> {
   register(IpcChannel.liveLookAgain, async (args) =>
     liveService().lookAgain(String(args[0])),
   );
+  // The CLI keeps no record of how a workflow's runs ended — the desktop's
+  // workflow-status file is its own — so a run its live store has dropped is
+  // simply not there to open (ANT-275).
+  register(IpcChannel.liveLastRun, async () => undefined);
 
   register(IpcChannel.agentsList, async () => agentLibrary().load());
   register(IpcChannel.agentsCreate, async (args) =>
@@ -1021,6 +1025,7 @@ export async function createBridge(options: BridgeOptions): Promise<Bridge> {
     liveCancel: (runId: string) => handle(IpcChannel.liveCancel, runId),
     liveDismiss: (runId: string) => handle(IpcChannel.liveDismiss, runId),
     liveLookAgain: (runId: string) => handle(IpcChannel.liveLookAgain, runId),
+    liveLastRun: (workflowId: string) => handle(IpcChannel.liveLastRun, workflowId),
     agentsList: () => handle(IpcChannel.agentsList),
     agentsCreate: (input: GlobalAgentInput) =>
       handle(IpcChannel.agentsCreate, input),

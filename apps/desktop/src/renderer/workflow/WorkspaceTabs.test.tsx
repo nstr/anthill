@@ -47,6 +47,9 @@ describe("the workspace switcher", () => {
     const finished = show({ liveEnabled: true, liveNow: false });
     expect(finished.live.getAttribute("aria-disabled")).toBeNull();
     expect(finished.live.querySelector(".ws-tab-dot.is-live")).toBeNull();
+    expect(finished.live.getAttribute("title")).toBe(
+      "See what the session did. The workflow stays open in its own tab",
+    );
   });
 
   it("marks the tab in front and does nothing when it is chosen again", () => {

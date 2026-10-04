@@ -234,6 +234,7 @@ export function installWebBridge(): Promise<AnthillApi> {
       liveCancel: (runId: string) => invoke(IpcChannel.liveCancel, runId),
       liveDismiss: (runId: string) => invoke(IpcChannel.liveDismiss, runId),
       liveLookAgain: (runId: string) => invoke(IpcChannel.liveLookAgain, runId),
+      liveLastRun: (workflowId: string) => invoke(IpcChannel.liveLastRun, workflowId),
       agentsList: () => invoke(IpcChannel.agentsList),
       agentsCreate: (input: GlobalAgentInput) =>
         invoke(IpcChannel.agentsCreate, input),

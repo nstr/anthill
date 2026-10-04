@@ -13,7 +13,8 @@
  * nothing about what would make it appear.
  *
  * The dot claims a live session only while there is one. A finished run can
- * still be opened from here, and pulsing red over it would say it was running.
+ * still be opened from here — days later too, from the ending main keeps
+ * (ANT-275) — and pulsing red over it would say it was running.
  */
 
 import { useRef, type KeyboardEvent } from "react";
@@ -30,6 +31,7 @@ export type WorkspaceTabsProps = {
 };
 
 const LIVE_TITLE = "The workflow stays open in its own tab";
+const ENDED_TITLE = "See what the session did. The workflow stays open in its own tab";
 const NO_LIVE_TITLE = "No session is running this workflow yet. Copy the prompt and start one.";
 
 export function WorkspaceTabs({ active, liveEnabled, liveNow, onSelect }: WorkspaceTabsProps) {
@@ -76,7 +78,7 @@ export function WorkspaceTabs({ active, liveEnabled, liveNow, onSelect }: Worksp
         aria-selected={selected}
         aria-disabled={disabled ? true : undefined}
         tabIndex={selected ? 0 : -1}
-        {...(id === "live" ? { title: disabled ? NO_LIVE_TITLE : LIVE_TITLE } : {})}
+        {...(id === "live" ? { title: disabled ? NO_LIVE_TITLE : liveNow ? LIVE_TITLE : ENDED_TITLE } : {})}
         onClick={() => select(id)}
       >
         {id === "live" ? (

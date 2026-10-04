@@ -53,6 +53,8 @@ function stubApi() {
     copyPrompt: vi.fn(async () => true),
     onLiveSnapshot: vi.fn((_listener: SnapshotListener): (() => void) => () => undefined),
     liveEvents: vi.fn(async (): Promise<unknown[]> => []),
+    // The run a workflow last had once the live store dropped it (ANT-275).
+    liveLastRun: vi.fn(async (_workflowId: string): Promise<PendingRun | undefined> => undefined),
     onLiveEvents: vi.fn((): (() => void) => () => undefined),
     liveSetupStatus: vi.fn(async () => ({ dismissed: true, trigger: "", harnesses: [] })),
     // The agents rail offers the global library alongside the workflow's own.
@@ -392,6 +394,52 @@ describe("the live session page and what main knows", () => {
     await waitFor(() => expect(api.liveSnapshot).toHaveBeenCalled());
     expect(document.querySelector(".presence-chip")).toBeNull();
     expect(document.querySelector(".presence-plaque")).toBeNull();
+  });
+
+  /*
+   * ANT-275. The live store drops a settled run a day after it ends. The
+   * launch window still said Finished from the ending main keeps, while the
+   * tab here said no session had ever run the workflow.
+   */
+  it("opens the finished session a workflow last had, after the store dropped it", async () => {
+    const api = stubApi();
+    api.liveLastRun.mockImplementation(async (workflowId: string) => ({
+      ...observed,
+      workflowId,
+      state: "completed" as const,
+    }));
+
+    render(<WorkflowScreen onExit={() => undefined} onSettings={() => undefined} />);
+    fireEvent.click((await screen.findByText(/One agent solves it/)).closest("button") as HTMLElement);
+    await screen.findByRole("button", { name: "Prompt" });
+
+    const tab = screen.getByRole("tab", { name: "Live session" });
+    await waitFor(() => expect(tab.getAttribute("aria-disabled")).toBeNull());
+    expect(tab.querySelector(".ws-tab-dot.is-live")).toBeNull();
+
+    fireEvent.click(tab);
+    await waitFor(() => {
+      expect((document.querySelector(".presence-label") as HTMLElement).textContent).toContain("Session finished");
+    });
+    expect(screen.getByText("ANT-11112222")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /Stop observing/ })).toBeNull();
+  });
+
+  it("keeps the tab shut when the run a workflow last had left no session to show", async () => {
+    const api = stubApi();
+    api.liveLastRun.mockImplementation(async (workflowId: string) => ({
+      ...observed,
+      workflowId,
+      state: "failed" as const,
+      detectedSessionId: undefined,
+    }));
+
+    render(<WorkflowScreen onExit={() => undefined} onSettings={() => undefined} />);
+    fireEvent.click((await screen.findByText(/One agent solves it/)).closest("button") as HTMLElement);
+    await screen.findByRole("button", { name: "Prompt" });
+
+    await waitFor(() => expect(api.liveLastRun).toHaveBeenCalled());
+    expect(screen.getByRole("tab", { name: "Live session" }).getAttribute("aria-disabled")).toBe("true");
   });
 
   it("keeps the last it knew when the run leaves the snapshot", async () => {
@@ -1361,7 +1409,7 @@ describe("a handover the user asked to watch", () => {
 
     const live = tab("Live session");
     expect(live.getAttribute("aria-disabled")).toBeNull();
-    expect(live.getAttribute("title")).toBe("The workflow stays open in its own tab");
+    expect(live.getAttribute("title")).toBe("See what the session did. The workflow stays open in its own tab");
     // Finished, so no red dot claiming it is running.
     expect(live.querySelector(".ws-tab-dot.is-live")).toBeNull();
 

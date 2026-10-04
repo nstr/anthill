@@ -94,6 +94,7 @@ const api: AnthillApi = {
   liveCancel: (runId: string) => ipcRenderer.invoke(IpcChannel.liveCancel, runId),
   liveDismiss: (runId: string) => ipcRenderer.invoke(IpcChannel.liveDismiss, runId),
   liveLookAgain: (runId: string) => ipcRenderer.invoke(IpcChannel.liveLookAgain, runId),
+  liveLastRun: (workflowId: string) => ipcRenderer.invoke(IpcChannel.liveLastRun, workflowId),
   agentsList: () => ipcRenderer.invoke(IpcChannel.agentsList),
   agentsCreate: (input: GlobalAgentInput) => ipcRenderer.invoke(IpcChannel.agentsCreate, input),
   agentsUpdate: (id: string, input: Partial<GlobalAgentInput>) =>

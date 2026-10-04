@@ -50,6 +50,7 @@ export const IpcChannel = {
   liveCancel: "live:cancel",
   liveDismiss: "live:dismiss",
   liveLookAgain: "live:look-again",
+  liveLastRun: "live:last-run",
   agentsList: "agents:list",
   agentsCreate: "agents:create",
   agentsUpdate: "agents:update",
@@ -124,7 +125,8 @@ export const IpcChannel = {
 // 24: choosing the workflow folder on Settings ▸ General, and the setting it writes.
 // 25: the platform in the capabilities, and quitting from the Windows gate (ANT-154).
 // 26: Edit ▸ Undo / Redo sent to the page (ANT-192).
-export const IPC_CONTRACT = 26;
+// 27: the run a workflow last had, after the live store dropped it (ANT-275).
+export const IPC_CONTRACT = 27;
 
 export type IpcCapabilities = {
   /** The main process's own contract number. */
@@ -1106,6 +1108,12 @@ export interface AnthillApi {
   liveDismiss(runId: string): Promise<LiveSnapshot>;
   /** Re-read a lost session's records. Reading only; the session is untouched. */
   liveLookAgain(runId: string): Promise<LiveSnapshot>;
+  /**
+   * The run a workflow last had, as its ending left it, once the live store
+   * has dropped it (ANT-275). For opening a finished session, never for
+   * saying what is live: that is the snapshot's answer.
+   */
+  liveLastRun(workflowId: string): Promise<PendingRun | undefined>;
 
   /* The global agent library: reusable profiles that exist before any
      workflow. Descriptions of intended agents — nothing here executes. */

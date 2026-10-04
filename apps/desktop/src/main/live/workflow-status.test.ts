@@ -60,7 +60,19 @@ describe("an ending", () => {
       state: "completed",
       at: "2026-09-01T10:40:00.000Z",
       runId: "ANT-1",
+      run: RUN,
     });
+  });
+
+  // ANT-275: the Live session tab opens the finished session from this.
+  it("keeps the run as it settled, and can be found by its id", async () => {
+    const store = new WorkflowStatusStore(path);
+    await store.remember({ ...RUN, dismissedAt: "2026-09-01T12:00:00.000Z" });
+
+    const later = new WorkflowStatusStore(path);
+    expect((await later.all())["workflow-1"].run).toEqual(RUN);
+    expect(await later.find("ANT-1")).toMatchObject({ workflowId: "workflow-1", status: { runId: "ANT-1" } });
+    expect(await later.find("ANT-404")).toBeUndefined();
   });
 
   // ANT-212: a copied prompt no session ever carried did not fail.
@@ -175,6 +187,29 @@ describe("the record", () => {
       "utf8",
     );
     expect(await new WorkflowStatusStore(path).all()).toEqual({});
+  });
+
+  it("reads a record from before the run was kept, and drops a kept run that is not its own", async () => {
+    await writeFile(
+      path,
+      JSON.stringify({
+        version: WORKFLOW_STATUS_VERSION,
+        workflows: {
+          older: { state: "completed", at: "2026-09-01T10:40:00.000Z", runId: "ANT-1" },
+          stranger: {
+            state: "completed",
+            at: "2026-09-01T10:40:00.000Z",
+            runId: "ANT-2",
+            run: { ...RUN, anthillRunId: "ANT-9", workflowId: "stranger" },
+          },
+        },
+      }),
+      "utf8",
+    );
+    const all = await new WorkflowStatusStore(path).all();
+    expect(all.older).toEqual({ state: "completed", at: "2026-09-01T10:40:00.000Z", runId: "ANT-1" });
+    expect(all.stranger.runId).toBe("ANT-2");
+    expect(all.stranger.run).toBeUndefined();
   });
 
   it("loses only the entry it cannot read", async () => {
